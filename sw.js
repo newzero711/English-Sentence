@@ -1,8 +1,20 @@
-const CACHE_NAME = 'sentence-app-v3';
+const CACHE_NAME = 'sentence-app-v4';
 const ASSETS = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './css/base.css',
+  './css/vocab.css',
+  './css/study.css',
+  './css/calendar.css',
+  './js/state.js',
+  './js/shell.js',
+  './js/vocab.js',
+  './js/study.js',
+  './js/add.js',
+  './js/calendar.js',
+  './js/settings.js',
+  './js/init.js'
 ];
 
 self.addEventListener('install', (event) => {
