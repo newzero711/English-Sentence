@@ -137,6 +137,27 @@
     font-weight: 600;
   }
 
+  .chip.add-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .chip.add-chip .icon-plus {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+  }
+  .chip.add-chip .icon-plus::before,
+  .chip.add-chip .icon-plus::after {
+    content: '';
+    position: absolute;
+    background: var(--text-dim);
+    border-radius: 1px;
+  }
+  .chip.add-chip .icon-plus::before { left: 0; right: 0; top: 50%; height: 2px; transform: translateY(-50%); }
+  .chip.add-chip .icon-plus::after { top: 0; bottom: 0; left: 50%; width: 2px; transform: translateX(-50%); }
+
   /* ---------- Vocab list ---------- */
   .vocab-item {
     background: var(--surface);
@@ -397,6 +418,7 @@
   .btn-primary { background: var(--accent); color: #1B1F00; }
   .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
   .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+  .btn-danger { background: transparent; color: var(--incorrect); border: 1px solid var(--incorrect); }
 
   .btn[disabled] { opacity: 0.4; }
 
@@ -787,7 +809,26 @@
       <textarea class="field-input text" id="edit-detail-input" rows="3" style="min-height:80px;"></textarea>
     </div>
 
-    <button class="btn btn-primary" id="edit-save-btn" style="width:100%;">수정 저장하기</button>
+    <button class="btn btn-primary" id="edit-save-btn" style="width:100%; margin-bottom:10px;">수정 저장하기</button>
+    <button class="btn btn-danger" id="edit-delete-btn" style="width:100%;">삭제</button>
+  </div>
+</div>
+
+<!-- 단어장 추가 팝업 (단어장 탭 칩 줄의 "+ 추가"에서 호출) -->
+<div class="modal-backdrop" id="deck-overlay">
+  <div class="modal-card">
+    <div class="modal-card-header">
+      <h2>단어장 추가</h2>
+      <button class="icon-btn" id="deck-close-btn">✕</button>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">단어장 이름</label>
+      <input class="field-input text" id="deck-name-input" placeholder="예: 비즈니스 영어" autocapitalize="off" autocorrect="off" spellcheck="false" />
+      <div class="field-hint">새 단어장은 바로 칩 목록에 추가되고, 문장을 넣지 않아도 시트에 빈 탭으로 생성돼요.</div>
+    </div>
+
+    <button class="btn btn-primary" id="deck-save-btn" style="width:100%;">단어장 만들기</button>
   </div>
 </div>
 
@@ -803,6 +844,8 @@ const DB_KEYS = {
   pendingLogs: 'sm_pending_logs',
   pendingSentences: 'sm_pending_sentences',
   pendingUpdates: 'sm_pending_updates',
+  pendingDecks: 'sm_pending_decks',
+  pendingDeletes: 'sm_pending_deletes',
   history: 'sm_history',
   config: 'sm_config'
 };
@@ -821,6 +864,8 @@ let state = {
   pendingLogs: [],        // 동기화 안 된 학습 로그
   pendingSentences: [],   // 동기화 안 된 새 문장
   pendingUpdates: [],     // 동기화 안 된 문장 수정 (id별로 마지막 수정만 보관)
+  pendingDecks: [],       // 동기화 안 된 새 단어장 (빈 탭 생성 대기)
+  pendingDeletes: [],     // 동기화 안 된 문장 삭제 (id 목록)
   history: [],            // { date:'YYYY-MM-DD', deck, sentenceId, isCorrect } (달력용, 영구 보관)
   config: { ...defaultConfig },
 
@@ -849,6 +894,8 @@ function loadState() {
     state.pendingLogs = JSON.parse(localStorage.getItem(DB_KEYS.pendingLogs) || '[]');
     state.pendingSentences = JSON.parse(localStorage.getItem(DB_KEYS.pendingSentences) || '[]');
     state.pendingUpdates = JSON.parse(localStorage.getItem(DB_KEYS.pendingUpdates) || '[]');
+    state.pendingDecks = JSON.parse(localStorage.getItem(DB_KEYS.pendingDecks) || '[]');
+    state.pendingDeletes = JSON.parse(localStorage.getItem(DB_KEYS.pendingDeletes) || '[]');
     state.history = JSON.parse(localStorage.getItem(DB_KEYS.history) || '[]');
     state.config = { ...defaultConfig, ...JSON.parse(localStorage.getItem(DB_KEYS.config) || '{}') };
   } catch (e) {
@@ -862,6 +909,8 @@ function saveLogs() { localStorage.setItem(DB_KEYS.logs, JSON.stringify(state.lo
 function savePending() { localStorage.setItem(DB_KEYS.pendingLogs, JSON.stringify(state.pendingLogs)); }
 function savePendingSentences() { localStorage.setItem(DB_KEYS.pendingSentences, JSON.stringify(state.pendingSentences)); }
 function savePendingUpdates() { localStorage.setItem(DB_KEYS.pendingUpdates, JSON.stringify(state.pendingUpdates)); }
+function savePendingDecks() { localStorage.setItem(DB_KEYS.pendingDecks, JSON.stringify(state.pendingDecks)); }
+function savePendingDeletes() { localStorage.setItem(DB_KEYS.pendingDeletes, JSON.stringify(state.pendingDeletes)); }
 function saveHistory() { localStorage.setItem(DB_KEYS.history, JSON.stringify(state.history)); }
 function saveConfig() { localStorage.setItem(DB_KEYS.config, JSON.stringify(state.config)); }
 
@@ -982,19 +1031,32 @@ function renderVocabTab() {
     state.vocabDeck = 'all';
     renderVocabTab();
   }));
-  decks.forEach(d => {
+  // 활성화된 단어장은 항상 "+ 추가" 칩 바로 앞에 오도록 정렬
+  const orderedDecks = state.vocabDeck !== 'all' && decks.includes(state.vocabDeck)
+    ? [...decks.filter(d => d !== state.vocabDeck), state.vocabDeck]
+    : decks;
+
+  orderedDecks.forEach(d => {
     chipsEl.appendChild(makeChip(d, state.vocabDeck === d, () => {
       state.vocabDeck = d;
       renderVocabTab();
     }));
   });
 
+  const addChip = document.createElement('button');
+  addChip.className = 'chip add-chip';
+  addChip.innerHTML = '<span class="icon-plus"></span><span>추가</span>';
+  addChip.addEventListener('click', openAddDeckModal);
+  chipsEl.appendChild(addChip);
+
   const filtered = state.sentences
     .filter(s => state.vocabDeck === 'all' || deckOf(s) === state.vocabDeck)
     .slice()
     .sort((a, b) => recencyKey(b) - recencyKey(a));
   document.getElementById('vocab-count').textContent = `${filtered.length}개 문장`;
-  document.getElementById('vocab-start-btn').disabled = filtered.length === 0;
+  const startBtn = document.getElementById('vocab-start-btn');
+  startBtn.disabled = false;
+  startBtn.textContent = filtered.length === 0 ? '문장 추가하기' : '학습 시작';
 
   const listEl = document.getElementById('vocab-list');
   listEl.innerHTML = '';
@@ -1135,13 +1197,131 @@ function queuePendingUpdate(update) {
   updateStats();
 }
 
+function handleEditDelete() {
+  const id = state.editingId;
+  const sentence = state.sentences.find(s => String(s.id) === String(id));
+  if (!sentence) { closeEditOverlay(); return; }
+
+  if (!confirm('이 문장을 삭제할까요?')) return;
+
+  state.sentences = state.sentences.filter(s => String(s.id) !== String(id));
+  saveSentences();
+  delete state.logs[String(id)];
+  saveLogs();
+
+  const url = state.config.sheetUrl;
+  if (url) {
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'deleteSentence', id })
+    }).then(r => r.json()).then(data => {
+      if (!data.ok) queuePendingDelete(id);
+    }).catch(() => queuePendingDelete(id));
+  } else {
+    queuePendingDelete(id);
+  }
+
+  showToast('문장을 삭제했어요');
+  closeEditOverlay();
+  renderVocabTab();
+  updateStats();
+}
+
+function queuePendingDelete(id) {
+  if (!state.pendingDeletes.includes(id)) state.pendingDeletes.push(id);
+  savePendingDeletes();
+  updateStats();
+}
+
 document.getElementById('edit-close-btn').addEventListener('click', closeEditOverlay);
 document.getElementById('edit-save-btn').addEventListener('click', handleEditSave);
+document.getElementById('edit-delete-btn').addEventListener('click', handleEditDelete);
 document.getElementById('edit-overlay').addEventListener('click', (e) => {
   if (e.target.id === 'edit-overlay') closeEditOverlay();
 });
 
-document.getElementById('vocab-start-btn').addEventListener('click', () => startStudy(state.vocabDeck));
+document.getElementById('vocab-start-btn').addEventListener('click', () => {
+  const filtered = state.sentences.filter(s => state.vocabDeck === 'all' || deckOf(s) === state.vocabDeck);
+  if (filtered.length === 0) {
+    const deckToPrefill = (state.vocabDeck === 'all' || state.vocabDeck === '기본') ? '' : state.vocabDeck;
+    setActiveTab('add');
+    document.getElementById('add-deck-input').value = deckToPrefill;
+  } else {
+    startStudy(state.vocabDeck);
+  }
+});
+
+/* ================= 단어장 추가 ================= */
+
+const RESERVED_DECK_NAMES = ['전체', '학습로그'];
+
+function openAddDeckModal() {
+  document.getElementById('deck-name-input').value = '';
+  document.getElementById('deck-overlay').classList.add('show');
+  document.getElementById('deck-name-input').focus({ preventScroll: true });
+}
+
+function closeAddDeckModal() {
+  document.getElementById('deck-overlay').classList.remove('show');
+}
+
+function handleAddDeckSave() {
+  const name = document.getElementById('deck-name-input').value.trim();
+  if (!name) {
+    showToast('단어장 이름을 입력해주세요');
+    return;
+  }
+  if (RESERVED_DECK_NAMES.includes(name)) {
+    showToast('사용할 수 없는 이름이에요');
+    return;
+  }
+  const existing = getDecks();
+  if (existing.some(d => d.localeCompare(name, 'ko', { sensitivity: 'base' }) === 0)) {
+    showToast('이미 있는 단어장이에요');
+    return;
+  }
+
+  state.allDecks.push(name);
+  saveDecks();
+
+  const url = state.config.sheetUrl;
+  if (url) {
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'addDeck', deck: name })
+    }).then(r => r.json()).then(data => {
+      if (!data.ok) queuePendingDeck(name);
+    }).catch(() => queuePendingDeck(name));
+  } else {
+    queuePendingDeck(name);
+  }
+
+  state.vocabDeck = name;
+  showToast('단어장을 만들었어요');
+  closeAddDeckModal();
+  renderVocabTab();
+  renderAddDeckChips();
+}
+
+function queuePendingDeck(name) {
+  if (!state.pendingDecks.includes(name)) state.pendingDecks.push(name);
+  savePendingDecks();
+  updateStats();
+}
+
+document.getElementById('deck-close-btn').addEventListener('click', closeAddDeckModal);
+document.getElementById('deck-save-btn').addEventListener('click', handleAddDeckSave);
+document.getElementById('deck-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'deck-overlay') closeAddDeckModal();
+});
+document.getElementById('deck-name-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    handleAddDeckSave();
+  }
+});
 
 /* ================= 학습 큐 구성 ================= */
 
@@ -1542,6 +1722,26 @@ async function flushPendingSentences(url) {
   savePendingSentences();
 }
 
+async function flushPendingDecks(url) {
+  if (!state.pendingDecks.length) return;
+  const remaining = [];
+  for (const name of state.pendingDecks) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'addDeck', deck: name })
+      });
+      const data = await res.json();
+      if (!data.ok) remaining.push(name);
+    } catch (e) {
+      remaining.push(name);
+    }
+  }
+  state.pendingDecks = remaining;
+  savePendingDecks();
+}
+
 async function flushPendingUpdates(url) {
   if (!state.pendingUpdates.length) return;
   const remaining = [];
@@ -1562,6 +1762,26 @@ async function flushPendingUpdates(url) {
   savePendingUpdates();
 }
 
+async function flushPendingDeletes(url) {
+  if (!state.pendingDeletes.length) return;
+  const remaining = [];
+  for (const id of state.pendingDeletes) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'deleteSentence', id })
+      });
+      const data = await res.json();
+      if (!data.ok) remaining.push(id);
+    } catch (e) {
+      remaining.push(id);
+    }
+  }
+  state.pendingDeletes = remaining;
+  savePendingDeletes();
+}
+
 async function syncWithSheet() {
   const url = state.config.sheetUrl;
   if (!url) {
@@ -1572,8 +1792,10 @@ async function syncWithSheet() {
   setConnStatus('pending', '동기화 중...');
 
   try {
+    await flushPendingDecks(url);
     await flushPendingSentences(url);
     await flushPendingUpdates(url);
+    await flushPendingDeletes(url);
 
     const res = await fetch(`${url}?action=sentences`);
     const data = await res.json();
@@ -1624,7 +1846,7 @@ function setConnStatus(type, msg) {
 
 function updateStats() {
   document.getElementById('stat-total').textContent = state.sentences.length;
-  document.getElementById('stat-pending').textContent = state.pendingLogs.length + state.pendingSentences.length + state.pendingUpdates.length;
+  document.getElementById('stat-pending').textContent = state.pendingLogs.length + state.pendingSentences.length + state.pendingUpdates.length + state.pendingDecks.length + state.pendingDeletes.length;
 }
 
 /* ================= CSV 내보내기 / 초기화 ================= */

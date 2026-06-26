@@ -26,6 +26,8 @@
  *   POST { action: "addLogsBatch", ... } -> 학습 로그 여러 건 일괄 추가
  *   POST { action: "addSentence", ... }  -> 새 문장 1건 추가 (deck 이름의 탭이 없으면 새로 생성)
  *   POST { action: "updateSentence", id, deck, english, korean, detail } -> 기존 문장 수정 (deck이 바뀌면 다른 탭으로 이동)
+ *   POST { action: "addDeck", deck }     -> 문장 없이 빈 단어장(탭)만 생성 (이미 있으면 그대로 둠)
+ *   POST { action: "deleteSentence", id } -> 문장 1건 삭제 (해당 탭의 행을 삭제)
  */
 
 var SHEET_LOGS = "학습로그";
@@ -73,6 +75,10 @@ function doPost(e) {
     return jsonResponse(addSentence(body));
   } else if (action === "updateSentence") {
     return jsonResponse(updateSentence(body));
+  } else if (action === "addDeck") {
+    return jsonResponse(addDeck(body));
+  } else if (action === "deleteSentence") {
+    return jsonResponse(deleteSentence(body));
   }
 
   return jsonResponse({ error: "unknown action" });
@@ -160,6 +166,17 @@ function addSentence(body) {
   return { ok: true, id: deckName + "!" + (sheet.getLastRow() - 1) };
 }
 
+/* ---------- 빈 단어장(탭) 생성 ---------- */
+
+function addDeck(body) {
+  var deckName = body.deck && String(body.deck).trim();
+  if (!deckName) return { ok: false, error: "deck name required" };
+  if (RESERVED_SHEETS.indexOf(deckName) !== -1) return { ok: false, error: "reserved deck name" };
+
+  getOrCreateSheet(deckName, SENTENCE_HEADERS);
+  return { ok: true };
+}
+
 /* ---------- 문장 수정 ---------- */
 
 // id는 "탭이름!행번호(헤더 제외, 데이터 기준)" 형태
@@ -200,6 +217,19 @@ function updateSentence(body) {
     detail: body.detail,
     date: body.date
   });
+}
+
+/* ---------- 문장 삭제 ---------- */
+
+function deleteSentence(body) {
+  var ref = parseSentenceId(body.id);
+  if (!ref) return { ok: false, error: "invalid id" };
+
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ref.deck);
+  if (!sheet) return { ok: false, error: "sheet not found: " + ref.deck };
+
+  sheet.deleteRow(ref.row + 1); // 헤더 보정 (데이터 행 -> 실제 시트 행)
+  return { ok: true };
 }
 
 /* ---------- 단어장 인식 상태 진단 ---------- */
