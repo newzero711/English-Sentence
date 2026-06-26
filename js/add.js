@@ -47,7 +47,15 @@ function handleAddSave() {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'addSentence', english, korean, detail, deck, date: newSentence.date })
     }).then(r => r.json()).then(data => {
-      if (!data.ok) queuePendingSentence(newSentence);
+      if (data.ok) {
+        // 시트가 실제로 부여한 id(단어장!행번호)로 맞춰야 이후 삭제/수정 요청이 시트에 반영된다
+        if (data.id) {
+          newSentence.id = data.id;
+          saveSentences();
+        }
+      } else {
+        queuePendingSentence(newSentence);
+      }
     }).catch(() => queuePendingSentence(newSentence));
   } else {
     queuePendingSentence(newSentence);

@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="css/vocab.css" />
 <link rel="stylesheet" href="css/study.css" />
 <link rel="stylesheet" href="css/calendar.css" />
+<link rel="stylesheet" href="css/trash.css" />
 </head>
 <body>
 
@@ -23,11 +24,14 @@
   <section class="tab-view active" id="tab-vocab">
     <div class="tab-header">
       <h1>단어장</h1>
-      <span class="tab-sub" id="vocab-count">0개 문장</span>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span class="tab-sub" id="vocab-count">0개 문장</span>
+        <button class="icon-btn" id="deck-order-btn" title="단어장 순서 변경">⋮</button>
+      </div>
     </div>
     <div class="filters" id="deck-chips"></div>
-    <button class="btn btn-primary" id="vocab-start-btn" style="width:100%; margin-bottom:16px;">학습 시작</button>
     <div id="vocab-list"></div>
+    <button class="btn btn-primary" id="vocab-start-btn">학습 시작</button>
   </section>
 
   <!-- 문장추가 탭 -->
@@ -118,7 +122,8 @@
     <div class="field-group">
       <label class="field-label">데이터 관리</label>
       <button class="btn btn-ghost" id="export-csv-btn" style="margin-bottom:8px;">학습 기록 CSV로 내보내기</button>
-      <button class="btn btn-ghost" id="reset-progress-btn">학습 기록 초기화</button>
+      <button class="btn btn-ghost" id="reset-progress-btn" style="margin-bottom:8px;">학습 기록 초기화</button>
+      <button class="btn btn-ghost" id="open-trash-btn">휴지통 <span id="trash-count-badge"></span></button>
     </div>
   </section>
 
@@ -177,11 +182,22 @@
       </div>
     </div>
 
+    <div class="empty-state" id="session-result-card" style="display:none;">
+      <div class="icon">🎯</div>
+      <h3>한 바퀴 다 돌았어요!</h3>
+      <div class="session-score" id="session-score">0 / 0</div>
+      <p id="session-score-sub"></p>
+    </div>
+
   </div>
 
-  <div class="action-row">
+  <div class="action-row" id="study-action-row">
     <button class="btn btn-secondary" id="skip-btn">건너뛰기</button>
     <button class="btn btn-primary" id="check-btn">채점하기</button>
+  </div>
+  <div class="action-row" id="session-result-action-row" style="display:none;">
+    <button class="btn btn-secondary" id="session-close-btn">닫기</button>
+    <button class="btn btn-primary" id="session-restart-btn">다시 풀기</button>
   </div>
 </div>
 
@@ -237,6 +253,37 @@
   </div>
 </div>
 
+<!-- 단어장 순서 변경 팝업 (단어장 탭 헤더의 ⋮ 버튼에서 호출) -->
+<div class="modal-backdrop" id="deck-order-overlay">
+  <div class="modal-card">
+    <div class="modal-card-header">
+      <h2>단어장 설정</h2>
+      <button class="icon-btn" id="deck-order-close-btn">✕</button>
+    </div>
+    <div class="field-hint" style="margin-top:-8px; margin-bottom:14px;">
+      화살표로 순서를 바꾸면 단어장 탭의 필터 순서에 바로 반영돼요.
+    </div>
+    <div id="deck-order-list"></div>
+  </div>
+</div>
+
+<!-- 휴지통 (설정 탭의 "휴지통" 버튼에서 호출) -->
+<div class="modal-backdrop" id="trash-overlay">
+  <div class="modal-card">
+    <div class="modal-card-header">
+      <h2>휴지통</h2>
+      <div style="display:flex; align-items:center; gap:14px;">
+        <button class="btn-text-danger" id="trash-empty-btn">모두 삭제</button>
+        <button class="icon-btn" id="trash-close-btn">✕</button>
+      </div>
+    </div>
+    <div class="field-hint" style="margin-top:-8px; margin-bottom:14px;">
+      삭제한 문장은 30일 동안 보관되며, 그 안에 복구하면 시트에도 다시 추가돼요.
+    </div>
+    <div id="trash-list"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="js/state.js"></script>
@@ -244,6 +291,7 @@
 <script src="js/vocab.js"></script>
 <script src="js/study.js"></script>
 <script src="js/add.js"></script>
+<script src="js/trash.js"></script>
 <script src="js/calendar.js"></script>
 <script src="js/settings.js"></script>
 <script src="js/init.js"></script>

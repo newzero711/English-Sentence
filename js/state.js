@@ -11,8 +11,11 @@ const DB_KEYS = {
   pendingUpdates: 'sm_pending_updates',
   pendingDecks: 'sm_pending_decks',
   pendingDeletes: 'sm_pending_deletes',
+  pendingDeckDeletes: 'sm_pending_deck_deletes',
   history: 'sm_history',
-  config: 'sm_config'
+  config: 'sm_config',
+  trash: 'sm_trash',
+  deckOrder: 'sm_deck_order'
 };
 
 const defaultConfig = {
@@ -31,8 +34,11 @@ let state = {
   pendingUpdates: [],     // 동기화 안 된 문장 수정 (id별로 마지막 수정만 보관)
   pendingDecks: [],       // 동기화 안 된 새 단어장 (빈 탭 생성 대기)
   pendingDeletes: [],     // 동기화 안 된 문장 삭제 (id 목록)
+  pendingDeckDeletes: [], // 동기화 안 된 단어장(탭) 삭제 (단어장 이름 목록)
   history: [],            // { date:'YYYY-MM-DD', deck, sentenceId, isCorrect } (달력용, 영구 보관)
   config: { ...defaultConfig },
+  trash: [],              // 휴지통: 삭제한 문장을 30일간 로컬에만 보관 (시트엔 복구할 때만 다시 반영)
+  deckOrder: [],          // 단어장 탭 필터 칩에 보여줄 단어장 순서 (사용자가 직접 정렬한 결과)
 
   activeTab: 'vocab',
   vocabDeck: 'all',       // 단어장 탭에서 선택된 단어장 필터
@@ -43,17 +49,19 @@ let state = {
   queue: [],
   index: 0,
   checked: false,
+  sessionCorrect: 0,      // 이번 학습 사이클에서 맞춘 문제 수 (전체 문제 수는 queue.length)
+  sessionDone: false,     // 한 바퀴를 다 돌아 결과창을 보여줘야 하는지
 
   calYear: now0.getFullYear(),
   calMonth: now0.getMonth(),
-  calSelectedDate: null
+  calSelectedDate: localDateStr(now0)
 };
 
 /* ---------- 로컬 저장소 ---------- */
 
 function loadState() {
   try {
-    state.sentences = JSON.parse(localStorage.getItem(DB_KEYS.sentences) || '[]');
+    state.sentences = JSON.parse(localStorage.getItem(DB_KEYS.sentences) || '[]').map(s => ({ ...s, date: dateOnly(s.date) }));
     state.allDecks = JSON.parse(localStorage.getItem(DB_KEYS.decks) || '[]');
     state.logs = JSON.parse(localStorage.getItem(DB_KEYS.logs) || '{}');
     state.pendingLogs = JSON.parse(localStorage.getItem(DB_KEYS.pendingLogs) || '[]');
@@ -61,8 +69,11 @@ function loadState() {
     state.pendingUpdates = JSON.parse(localStorage.getItem(DB_KEYS.pendingUpdates) || '[]');
     state.pendingDecks = JSON.parse(localStorage.getItem(DB_KEYS.pendingDecks) || '[]');
     state.pendingDeletes = JSON.parse(localStorage.getItem(DB_KEYS.pendingDeletes) || '[]');
+    state.pendingDeckDeletes = JSON.parse(localStorage.getItem(DB_KEYS.pendingDeckDeletes) || '[]');
     state.history = JSON.parse(localStorage.getItem(DB_KEYS.history) || '[]');
     state.config = { ...defaultConfig, ...JSON.parse(localStorage.getItem(DB_KEYS.config) || '{}') };
+    state.trash = JSON.parse(localStorage.getItem(DB_KEYS.trash) || '[]').map(t => ({ ...t, date: dateOnly(t.date) }));
+    state.deckOrder = JSON.parse(localStorage.getItem(DB_KEYS.deckOrder) || '[]');
   } catch (e) {
     console.error('state load error', e);
   }
@@ -76,8 +87,11 @@ function savePendingSentences() { localStorage.setItem(DB_KEYS.pendingSentences,
 function savePendingUpdates() { localStorage.setItem(DB_KEYS.pendingUpdates, JSON.stringify(state.pendingUpdates)); }
 function savePendingDecks() { localStorage.setItem(DB_KEYS.pendingDecks, JSON.stringify(state.pendingDecks)); }
 function savePendingDeletes() { localStorage.setItem(DB_KEYS.pendingDeletes, JSON.stringify(state.pendingDeletes)); }
+function savePendingDeckDeletes() { localStorage.setItem(DB_KEYS.pendingDeckDeletes, JSON.stringify(state.pendingDeckDeletes)); }
 function saveHistory() { localStorage.setItem(DB_KEYS.history, JSON.stringify(state.history)); }
 function saveConfig() { localStorage.setItem(DB_KEYS.config, JSON.stringify(state.config)); }
+function saveTrash() { localStorage.setItem(DB_KEYS.trash, JSON.stringify(state.trash)); }
+function saveDeckOrder() { localStorage.setItem(DB_KEYS.deckOrder, JSON.stringify(state.deckOrder)); }
 
 /* ---------- 유틸 ---------- */
 
@@ -99,7 +113,12 @@ function recencyKey(s) {
 function getDecks() {
   const set = new Set(state.allDecks.map(d => d.trim() || '기본'));
   state.sentences.forEach(s => set.add(deckOf(s)));
-  return Array.from(set).sort((a, b) => a.localeCompare(b, 'ko'));
+  const all = Array.from(set);
+
+  // 사용자가 정렬해둔 순서를 우선 적용하고, 거기 없는(새로 생긴) 단어장은 가나다순으로 뒤에 붙인다
+  const ordered = state.deckOrder.filter(d => all.includes(d));
+  const rest = all.filter(d => !ordered.includes(d)).sort((a, b) => a.localeCompare(b, 'ko'));
+  return [...ordered, ...rest];
 }
 
 function localDateStr(d = new Date()) {
@@ -107,6 +126,12 @@ function localDateStr(d = new Date()) {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+// 시트에서 날짜 셀이 타임스탬프(...T15:00:00.000Z)로 넘어오는 경우가 있어, 항상 앞의 "yyyy-MM-dd"만 남긴다
+function dateOnly(str) {
+  if (!str) return str;
+  return String(str).split('T')[0];
 }
 
 function escapeHtml(str) {
@@ -165,7 +190,7 @@ function similarity(a, b) {
 
 function updateStats() {
   document.getElementById('stat-total').textContent = state.sentences.length;
-  document.getElementById('stat-pending').textContent = state.pendingLogs.length + state.pendingSentences.length + state.pendingUpdates.length + state.pendingDecks.length + state.pendingDeletes.length;
+  document.getElementById('stat-pending').textContent = state.pendingLogs.length + state.pendingSentences.length + state.pendingUpdates.length + state.pendingDecks.length + state.pendingDeletes.length + state.pendingDeckDeletes.length;
 }
 
 /* ---------- Toast ---------- */

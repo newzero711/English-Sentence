@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sentence-app-v4';
+const CACHE_NAME = 'sentence-app-v7';
 const ASSETS = [
   './',
   './index.html',
@@ -7,11 +7,13 @@ const ASSETS = [
   './css/vocab.css',
   './css/study.css',
   './css/calendar.css',
+  './css/trash.css',
   './js/state.js',
   './js/shell.js',
   './js/vocab.js',
   './js/study.js',
   './js/add.js',
+  './js/trash.js',
   './js/calendar.js',
   './js/settings.js',
   './js/init.js'

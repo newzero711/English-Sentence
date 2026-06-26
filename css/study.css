@@ -145,6 +145,13 @@ textarea#answer-input::placeholder { color: var(--text-dim); }
 .result-card.correct { background: rgba(151,196,89,0.1); border-color: var(--correct); }
 .result-card.incorrect { background: rgba(226,75,74,0.1); border-color: var(--incorrect); }
 
+.session-score {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
 .result-status {
   font-size: 14px;
   font-weight: 600;

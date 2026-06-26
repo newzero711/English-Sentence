@@ -44,8 +44,14 @@ function startStudy(deckValue) {
     showToast('학습할 문장이 없어요');
     return;
   }
+  resetSession();
   document.getElementById('study-overlay').classList.add('show');
   render();
+}
+
+function resetSession() {
+  state.sessionCorrect = 0;
+  state.sessionDone = false;
 }
 
 function closeStudyOverlay() {
@@ -57,20 +63,42 @@ document.getElementById('study-close-btn').addEventListener('click', closeStudyO
 
 function render() {
   const total = state.queue.length;
-  const cardArea = document.getElementById('card-area');
   const promptCard = document.getElementById('prompt-card');
   const answerCard = document.querySelector('.answer-card');
-  const actionRow = document.querySelector('#study-overlay .action-row');
+  const resultCard = document.getElementById('result-card');
+  const studyActionRow = document.getElementById('study-action-row');
+  const sessionResultCard = document.getElementById('session-result-card');
+  const sessionResultActionRow = document.getElementById('session-result-action-row');
 
   document.getElementById('filter-summary').textContent =
     `${state.studyDeck === 'all' ? '전체' : state.studyDeck} · ${FILTER_LABELS[state.filter]}`;
 
+  if (state.sessionDone) {
+    promptCard.style.display = 'none';
+    answerCard.style.display = 'none';
+    resultCard.classList.remove('show');
+    studyActionRow.style.display = 'none';
+    sessionResultCard.style.display = 'block';
+    sessionResultActionRow.style.display = 'flex';
+
+    const sessionTotal = state.queue.length;
+    document.getElementById('session-score').textContent = `${state.sessionCorrect} / ${sessionTotal}`;
+    const pct = sessionTotal ? Math.round((state.sessionCorrect / sessionTotal) * 100) : 0;
+    document.getElementById('session-score-sub').textContent = `${sessionTotal}문제 중 ${state.sessionCorrect}개를 맞췄어요 (${pct}%)`;
+    document.getElementById('progress-fill').style.width = '100%';
+    return;
+  }
+
+  sessionResultCard.style.display = 'none';
+  sessionResultActionRow.style.display = 'none';
+
   if (!total) {
     promptCard.style.display = 'none';
     answerCard.style.display = 'none';
-    actionRow.style.display = 'none';
-    document.getElementById('result-card').classList.remove('show');
+    studyActionRow.style.display = 'none';
+    resultCard.classList.remove('show');
 
+    const cardArea = document.getElementById('card-area');
     if (!cardArea.querySelector('.empty-state')) {
       const empty = document.createElement('div');
       empty.className = 'empty-state';
@@ -85,12 +113,13 @@ function render() {
     return;
   }
 
-  const existingEmpty = cardArea.querySelector('.empty-state');
+  const cardArea = document.getElementById('card-area');
+  const existingEmpty = cardArea.querySelector('.empty-state:not(#session-result-card)');
   if (existingEmpty) existingEmpty.remove();
 
   promptCard.style.display = 'block';
   answerCard.style.display = 'block';
-  actionRow.style.display = 'flex';
+  studyActionRow.style.display = 'flex';
 
   const sentence = currentSentence();
   document.getElementById('prompt-counter').textContent = `${state.index + 1} / ${total}`;
@@ -171,6 +200,8 @@ function recordLog(sentence, userInput, isCorrect, sim) {
   const id = sentence.id;
   const deck = deckOf(sentence);
 
+  if (isCorrect) state.sessionCorrect++;
+
   state.logs[String(id)] = { lastCorrect: isCorrect, attempts: (state.logs[String(id)]?.attempts || 0) + 1 };
   saveLogs();
 
@@ -192,12 +223,14 @@ function recordLog(sentence, userInput, isCorrect, sim) {
 function nextCard() {
   state.index++;
   if (state.index >= state.queue.length) {
-    buildQueue();
-    if (!state.queue.length) {
-      render();
-      return;
-    }
+    state.sessionDone = true;
   }
+  render();
+}
+
+function restartSession() {
+  resetSession();
+  buildQueue();
   render();
 }
 
@@ -206,9 +239,13 @@ function setFilter(filter) {
   document.querySelectorAll('#filter-chips .chip').forEach(chip => {
     chip.classList.toggle('active', chip.dataset.filter === filter);
   });
+  resetSession();
   buildQueue();
   render();
 }
+
+document.getElementById('session-close-btn').addEventListener('click', closeStudyOverlay);
+document.getElementById('session-restart-btn').addEventListener('click', restartSession);
 
 document.getElementById('check-btn').addEventListener('click', handleCheck);
 document.getElementById('skip-btn').addEventListener('click', nextCard);

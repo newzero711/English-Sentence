@@ -50,7 +50,8 @@ function renderCalendar() {
 function renderCalDetail(dateStr) {
   const detailEl = document.getElementById('cal-detail');
   const entries = state.history.filter(h => h.date === dateStr);
-  const dateLabel = dateStr.replace(/-/g, '.');
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dateLabel = `${y}년 ${m}월 ${d}일`;
 
   if (!entries.length) {
     detailEl.innerHTML = `<div class="cal-detail-title">${dateLabel}</div><p class="cal-empty-note">이 날은 학습 기록이 없어요.</p>`;

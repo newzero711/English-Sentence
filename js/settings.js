@@ -1,6 +1,23 @@
 /* ================= 설정 탭 / 동기화 / CSV·초기화 =================
    설정 탭과 Google Sheets 동기화만 다룹니다. */
 
+// 문장 id는 "단어장!행번호" 형태라 삭제/이동 직후엔 다른 문장들의 행번호가 밀려서 어긋난다.
+// 시트에 실제로 변경을 반영한 직후엔 항상 이걸로 최신 id 목록을 다시 받아온다.
+async function refreshSentencesFromSheet() {
+  const url = state.config.sheetUrl;
+  if (!url) return;
+  try {
+    const res = await fetch(`${url}?action=sentences`);
+    const data = await res.json();
+    if (data.sentences) {
+      state.sentences = data.sentences.map(s => ({ ...s, date: dateOnly(s.date) }));
+      saveSentences();
+    }
+  } catch (e) {
+    // 새로고침 실패는 무시 - 다음 수동 동기화에서 다시 맞춰진다
+  }
+}
+
 async function flushPendingSentences(url) {
   if (!state.pendingSentences.length) return;
   const remaining = [];
@@ -61,10 +78,19 @@ async function flushPendingUpdates(url) {
   savePendingUpdates();
 }
 
+// id가 "단어장!행번호" 형태라 한 단어장에서 여러 건을 지울 때 행번호가 큰 것부터 지워야
+// 먼저 지운 행이 나중 항목의 행번호를 밀어버리지 않는다.
+function sortDeleteIdsDescending(ids) {
+  return ids.slice().sort((a, b) => {
+    const rowOf = (id) => parseInt(String(id).slice(String(id).lastIndexOf('!') + 1), 10) || 0;
+    return rowOf(b) - rowOf(a);
+  });
+}
+
 async function flushPendingDeletes(url) {
   if (!state.pendingDeletes.length) return;
   const remaining = [];
-  for (const id of state.pendingDeletes) {
+  for (const id of sortDeleteIdsDescending(state.pendingDeletes)) {
     try {
       const res = await fetch(url, {
         method: 'POST',
@@ -81,6 +107,26 @@ async function flushPendingDeletes(url) {
   savePendingDeletes();
 }
 
+async function flushPendingDeckDeletes(url) {
+  if (!state.pendingDeckDeletes.length) return;
+  const remaining = [];
+  for (const deck of state.pendingDeckDeletes) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'deleteDeck', deck })
+      });
+      const data = await res.json();
+      if (!data.ok) remaining.push(deck);
+    } catch (e) {
+      remaining.push(deck);
+    }
+  }
+  state.pendingDeckDeletes = remaining;
+  savePendingDeckDeletes();
+}
+
 async function syncWithSheet() {
   const url = state.config.sheetUrl;
   if (!url) {
@@ -91,6 +137,7 @@ async function syncWithSheet() {
   setConnStatus('pending', '동기화 중...');
 
   try {
+    await flushPendingDeckDeletes(url);
     await flushPendingDecks(url);
     await flushPendingSentences(url);
     await flushPendingUpdates(url);
@@ -100,7 +147,7 @@ async function syncWithSheet() {
     const data = await res.json();
 
     if (data.sentences) {
-      state.sentences = data.sentences;
+      state.sentences = data.sentences.map(s => ({ ...s, date: dateOnly(s.date) }));
       saveSentences();
     }
     if (data.decks) {
@@ -121,7 +168,7 @@ async function syncWithSheet() {
       }
     }
 
-    const stillPending = state.pendingLogs.length + state.pendingSentences.length + state.pendingUpdates.length + state.pendingDecks.length + state.pendingDeletes.length;
+    const stillPending = state.pendingLogs.length + state.pendingSentences.length + state.pendingUpdates.length + state.pendingDecks.length + state.pendingDeletes.length + state.pendingDeckDeletes.length;
     if (stillPending > 0) {
       setConnStatus('err', `동기화 일부 실패 · 문장 ${state.sentences.length}개 · ${stillPending}건 대기 중`);
       showToast('일부 항목이 동기화되지 않았어요. Apps Script 재배포를 확인해주세요');

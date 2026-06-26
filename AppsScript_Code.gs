@@ -27,6 +27,7 @@
  *   POST { action: "addSentence", ... }  -> 새 문장 1건 추가 (deck 이름의 탭이 없으면 새로 생성)
  *   POST { action: "updateSentence", id, deck, english, korean, detail } -> 기존 문장 수정 (deck이 바뀌면 다른 탭으로 이동)
  *   POST { action: "addDeck", deck }     -> 문장 없이 빈 단어장(탭)만 생성 (이미 있으면 그대로 둠)
+ *   POST { action: "deleteDeck", deck }  -> 단어장(탭) 전체 삭제 (그 안의 문장도 모두 사라짐)
  *   POST { action: "deleteSentence", id } -> 문장 1건 삭제 (해당 탭의 행을 삭제)
  */
 
@@ -77,6 +78,8 @@ function doPost(e) {
     return jsonResponse(updateSentence(body));
   } else if (action === "addDeck") {
     return jsonResponse(addDeck(body));
+  } else if (action === "deleteDeck") {
+    return jsonResponse(deleteDeck(body));
   } else if (action === "deleteSentence") {
     return jsonResponse(deleteSentence(body));
   }
@@ -111,6 +114,17 @@ function getSentenceColumns(headers) {
   };
 }
 
+// 날짜 형식 셀은 getValues()에서 Date 객체로 오는데, 이를 그대로 JSON으로 보내면
+// UTC ISO 문자열로 직렬화되면서 시간대 차이로 날짜가 하루 밀리는 문제가 생긴다.
+// 항상 스프레드시트 시간대 기준 "yyyy-MM-dd" 문자열로 고정해서 내보낸다.
+function formatDateValue(value) {
+  if (Object.prototype.toString.call(value) === "[object Date]") {
+    var tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+    return Utilities.formatDate(value, tz, "yyyy-MM-dd");
+  }
+  return value;
+}
+
 function getSentences() {
   var rows = [];
   var decks = [];
@@ -134,7 +148,7 @@ function getSentences() {
 
       rows.push({
         id: deckName + "!" + i, // 탭별 행 번호를 합쳐 전체 고유 id로 사용
-        date: col.date !== -1 ? row[col.date] : "",
+        date: col.date !== -1 ? formatDateValue(row[col.date]) : "",
         english: english,
         korean: korean,
         detail: col.detail !== -1 ? row[col.detail] : "",
@@ -174,6 +188,22 @@ function addDeck(body) {
   if (RESERVED_SHEETS.indexOf(deckName) !== -1) return { ok: false, error: "reserved deck name" };
 
   getOrCreateSheet(deckName, SENTENCE_HEADERS);
+  return { ok: true };
+}
+
+/* ---------- 단어장(탭) 전체 삭제 ---------- */
+
+function deleteDeck(body) {
+  var deckName = body.deck && String(body.deck).trim();
+  if (!deckName) return { ok: false, error: "deck name required" };
+  if (RESERVED_SHEETS.indexOf(deckName) !== -1) return { ok: false, error: "reserved deck name" };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(deckName);
+  if (!sheet) return { ok: true }; // 이미 없으면 성공으로 처리 (재시도 시 멱등)
+  if (ss.getSheets().length <= 1) return { ok: false, error: "마지막 남은 탭은 삭제할 수 없습니다" };
+
+  ss.deleteSheet(sheet);
   return { ok: true };
 }
 

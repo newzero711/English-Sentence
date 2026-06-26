@@ -6,13 +6,13 @@
   text-align: center;
   font-size: 12px;
   color: var(--text-dim);
-  margin-bottom: 8px;
+  margin-bottom: 16px;
 }
 .cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-  margin-bottom: 24px;
+  gap: 6px 4px;
+  margin-bottom: 16px;
 }
 .cal-day {
   aspect-ratio: 1;
@@ -34,7 +34,7 @@
 .cal-day .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
 .cal-day.selected .dot { background: #1B1F00; }
 
-.cal-detail-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+.cal-detail-title { font-size: 14px; font-weight: 600; margin-bottom: 16px; }
 .cal-deck-row {
   display: flex;
   justify-content: space-between;
@@ -43,7 +43,7 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 12px 14px;
-  margin-bottom: 8px;
+  margin-bottom: 16px;
   font-size: 13px;
 }
 .cal-deck-row .deck-name { font-weight: 600; }

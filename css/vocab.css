@@ -1,5 +1,17 @@
 /* 단어장 탭 전용 스타일 */
 
+/* 학습 시작 버튼: 목록 위에 떠서 하단 네비게이션 바로 위에 고정 */
+#tab-vocab { padding-bottom: 180px; }
+#vocab-start-btn {
+  position: fixed;
+  left: 20px;
+  right: 20px;
+  max-width: 440px;
+  margin: 0 auto;
+  bottom: calc(78px + env(safe-area-inset-bottom));
+  z-index: 30;
+}
+
 .vocab-item {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -53,3 +65,33 @@
   line-height: 1.6;
   display: none;
 }
+
+/* ---------- 단어장 순서 변경 팝업 ---------- */
+.deck-order-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+.deck-order-name { font-size: 15px; font-weight: 600; color: var(--text); }
+.deck-order-arrows { display: flex; align-items: center; gap: 6px; }
+.deck-order-arrows .btn-text-danger { margin-left: 8px; }
+.order-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.order-btn:active { transform: scale(0.94); }
+.order-btn[disabled] { opacity: 0.3; cursor: default; }
