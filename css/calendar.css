@@ -1,5 +1,21 @@
 /* 달력 탭 전용 스타일 */
 
+.cal-legend {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.cal-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.cal-legend-item .dot { width: 6px; height: 6px; border-radius: 50%; }
+.cal-legend-item .dot-study { background: var(--accent); }
+.cal-legend-item .dot-add { background: var(--text-dim); }
+
 .cal-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -31,10 +47,17 @@
 .cal-day.empty { background: transparent; border: none; cursor: default; }
 .cal-day.today { border-color: var(--accent); }
 .cal-day.selected { background: var(--accent); color: #1B1F00; font-weight: 700; }
-.cal-day .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
-.cal-day.selected .dot { background: #1B1F00; }
+.cal-day .dot-row { display: flex; gap: 3px; }
+.cal-day .dot { width: 5px; height: 5px; border-radius: 50%; }
+.cal-day .dot-study { background: var(--accent); }
+.cal-day .dot-add { background: var(--text-dim); }
+.cal-day.selected .dot-study,
+.cal-day.selected .dot-add { background: #1B1F00; }
 
 .cal-detail-title { font-size: 14px; font-weight: 600; margin-bottom: 16px; }
+.cal-section-label { font-size: 12px; color: var(--text-dim); font-weight: 600; margin-bottom: 8px; }
+.cal-add-row { cursor: pointer; }
+.cal-add-row:active { background: var(--surface-2); }
 .cal-deck-row {
   display: flex;
   justify-content: space-between;

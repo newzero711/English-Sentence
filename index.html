@@ -69,6 +69,10 @@
       <h1 id="cal-month-label">2026년 6월</h1>
       <button class="icon-btn" id="cal-next">›</button>
     </div>
+    <div class="cal-legend">
+      <span class="cal-legend-item"><span class="dot dot-study"></span>학습 기록</span>
+      <span class="cal-legend-item"><span class="dot dot-add"></span>추가 기록</span>
+    </div>
     <div class="cal-weekdays">
       <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
     </div>
@@ -281,6 +285,16 @@
       삭제한 문장은 30일 동안 보관되며, 그 안에 복구하면 시트에도 다시 추가돼요.
     </div>
     <div id="trash-list"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="cal-add-overlay">
+  <div class="modal-card">
+    <div class="modal-card-header">
+      <h2 id="cal-add-title">추가한 문장</h2>
+      <button class="icon-btn" id="cal-add-close-btn">✕</button>
+    </div>
+    <div id="cal-add-list"></div>
   </div>
 </div>
 

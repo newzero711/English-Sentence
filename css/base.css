@@ -29,6 +29,12 @@ html, body {
   overscroll-behavior-y: none;
 }
 
+/* 모달/오버레이가 열려있는 동안 뒷배경 스크롤을 막는다 (모달 카드 자체는 .modal-card의 overflow-y:auto로 따로 스크롤) */
+html:has(.modal-backdrop.show),
+html:has(.overlay.show) {
+  overflow: hidden;
+}
+
 body {
   display: flex;
   flex-direction: column;
