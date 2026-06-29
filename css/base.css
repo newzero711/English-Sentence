@@ -264,7 +264,10 @@ body {
 
 /* ---------- Edit / 단어장추가 modal ---------- */
 .modal-backdrop {
-  position: absolute;
+  /* fixed로 둬야 스크롤된 위치와 무관하게 현재 보이는 화면 정중앙에 뜬다.
+     absolute였을 때는 문서 전체 높이를 기준으로 중앙 정렬되어, 목록을
+     스크롤해둔 상태에서 열면 화면 밖(맨 위)에 떠 보이는 버그가 있었다. */
+  position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.6);
   z-index: 60;
