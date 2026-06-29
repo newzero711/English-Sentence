@@ -15,7 +15,8 @@ const DB_KEYS = {
   history: 'sm_history',
   config: 'sm_config',
   trash: 'sm_trash',
-  deckOrder: 'sm_deck_order'
+  deckOrder: 'sm_deck_order',
+  hiddenIds: 'sm_hidden_ids'
 };
 
 const defaultConfig = {
@@ -39,9 +40,11 @@ let state = {
   config: { ...defaultConfig },
   trash: [],              // 휴지통: 삭제한 문장을 30일간 로컬에만 보관 (시트엔 복구할 때만 다시 반영)
   deckOrder: [],          // 단어장 탭 필터 칩에 보여줄 단어장 순서 (사용자가 직접 정렬한 결과)
+  hiddenIds: [],          // 학습에서 제외(숨김) 처리한 문장 id 목록 - 로컬에만 보관, 시트엔 반영 안 함
 
   activeTab: 'vocab',
   vocabDeck: 'all',       // 단어장 탭에서 선택된 단어장 필터
+  vocabShowHidden: false, // 단어장 탭에서 숨긴 문장도 같이 보여줄지 여부
   editingId: null,        // 수정 오버레이에서 편집 중인 문장 id
 
   filter: 'all',          // 학습 오버레이 필터 (전체/오답만/안 푼 문장)
@@ -74,6 +77,7 @@ function loadState() {
     state.config = { ...defaultConfig, ...JSON.parse(localStorage.getItem(DB_KEYS.config) || '{}') };
     state.trash = JSON.parse(localStorage.getItem(DB_KEYS.trash) || '[]').map(t => ({ ...t, date: dateOnly(t.date) }));
     state.deckOrder = JSON.parse(localStorage.getItem(DB_KEYS.deckOrder) || '[]');
+    state.hiddenIds = JSON.parse(localStorage.getItem(DB_KEYS.hiddenIds) || '[]');
   } catch (e) {
     console.error('state load error', e);
   }
@@ -92,12 +96,25 @@ function saveHistory() { localStorage.setItem(DB_KEYS.history, JSON.stringify(st
 function saveConfig() { localStorage.setItem(DB_KEYS.config, JSON.stringify(state.config)); }
 function saveTrash() { localStorage.setItem(DB_KEYS.trash, JSON.stringify(state.trash)); }
 function saveDeckOrder() { localStorage.setItem(DB_KEYS.deckOrder, JSON.stringify(state.deckOrder)); }
+function saveHiddenIds() { localStorage.setItem(DB_KEYS.hiddenIds, JSON.stringify(state.hiddenIds)); }
 
 /* ---------- 유틸 ---------- */
 
 function deckOf(s) {
   const d = s && s.deck ? String(s.deck).trim() : '';
   return d || '기본';
+}
+
+function isHidden(s) {
+  return state.hiddenIds.includes(String(s.id));
+}
+
+function toggleHidden(sentence) {
+  const id = String(sentence.id);
+  const hidden = state.hiddenIds.includes(id);
+  state.hiddenIds = hidden ? state.hiddenIds.filter(x => x !== id) : [...state.hiddenIds, id];
+  saveHiddenIds();
+  showToast(hidden ? '문장을 다시 학습 목록에 포함했어요' : '문장을 숨겼어요 (학습에서 제외됩니다)');
 }
 
 // 단어장 탭 정렬용: id 끝의 숫자가 클수록 더 나중에 추가된 것

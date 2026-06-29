@@ -23,14 +23,23 @@ function renderVocabTab() {
   addChip.addEventListener('click', openAddDeckModal);
   chipsEl.appendChild(addChip);
 
-  const filtered = state.sentences
-    .filter(s => state.vocabDeck === 'all' || deckOf(s) === state.vocabDeck)
+  const deckSentences = state.sentences.filter(s => state.vocabDeck === 'all' || deckOf(s) === state.vocabDeck);
+  const visibleSentences = deckSentences.filter(s => !isHidden(s));
+  const hiddenCount = deckSentences.length - visibleSentences.length;
+  const filtered = (state.vocabShowHidden ? deckSentences : visibleSentences)
     .slice()
     .sort((a, b) => recencyKey(b) - recencyKey(a));
-  document.getElementById('vocab-count').textContent = `${filtered.length}개 문장`;
+
+  const hiddenToggleBtn = document.getElementById('vocab-hidden-toggle-btn');
+  hiddenToggleBtn.classList.toggle('active', state.vocabShowHidden);
+  hiddenToggleBtn.title = state.vocabShowHidden ? '숨긴 문장 가리기' : '숨긴 문장도 보기';
+
+  document.getElementById('vocab-count').textContent = (hiddenCount && !state.vocabShowHidden)
+    ? `${filtered.length}개 문장 · 숨김 ${hiddenCount}개`
+    : `${filtered.length}개 문장`;
   const startBtn = document.getElementById('vocab-start-btn');
   startBtn.disabled = false;
-  startBtn.textContent = filtered.length === 0 ? '문장 추가하기' : '학습 시작';
+  startBtn.textContent = visibleSentences.length === 0 ? '문장 추가하기' : '학습 시작';
 
   const listEl = document.getElementById('vocab-list');
   listEl.innerHTML = '';
@@ -46,7 +55,14 @@ function renderVocabTab() {
   }
 
   if (!filtered.length) {
-    listEl.innerHTML = `
+    listEl.innerHTML = hiddenCount
+      ? `
+      <div class="empty-state">
+        <div class="icon">🙈</div>
+        <h3>모두 숨긴 문장이에요</h3>
+        <p>상단의 숨김 보기 버튼을 누르면 확인할 수 있어요.</p>
+      </div>`
+      : `
       <div class="empty-state">
         <div class="icon">🔍</div>
         <h3>이 단어장은 비어있어요</h3>
@@ -58,9 +74,10 @@ function renderVocabTab() {
     const log = state.logs[String(s.id)];
     const statusClass = !log ? 'unseen' : (log.lastCorrect ? 'correct' : 'wrong');
     const statusLabel = !log ? '안 외움' : (log.lastCorrect ? '암기완료' : '다시 외우기');
+    const hidden = isHidden(s);
 
     const item = document.createElement('div');
-    item.className = 'vocab-item';
+    item.className = 'vocab-item' + (hidden ? ' hidden-item' : '');
     item.innerHTML = `
       <div class="vocab-item-top">
         <div>
@@ -68,6 +85,7 @@ function renderVocabTab() {
           <div class="vocab-korean">${escapeHtml(s.korean)}</div>
         </div>
         <div class="vocab-tags">
+          <button class="vocab-hide-btn" title="${hidden ? '숨김 해제' : '숨기기'}">${hidden ? '숨김 해제' : '숨기기'}</button>
           <span class="vocab-deck-tag">${escapeHtml(deckOf(s))}</span>
           <span class="vocab-status ${statusClass}">${statusLabel}</span>
         </div>
@@ -85,6 +103,12 @@ function renderVocabTab() {
         toggle.textContent = showing ? '힌트 보기' : '힌트 닫기';
       });
     }
+
+    item.querySelector('.vocab-hide-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleHidden(s);
+      renderVocabTab();
+    });
 
     item.addEventListener('click', () => openEditOverlay(s));
 
@@ -113,8 +137,18 @@ function openEditOverlay(sentence) {
   document.getElementById('edit-english-input').value = sentence.english || '';
   document.getElementById('edit-korean-input').value = sentence.korean || '';
   document.getElementById('edit-detail-input').value = sentence.detail || '';
+  document.getElementById('edit-hide-btn').textContent = isHidden(sentence) ? '숨김 해제' : '숨기기 (학습에서 제외)';
 
   document.getElementById('edit-overlay').classList.add('show');
+}
+
+function handleEditToggleHidden() {
+  const sentence = state.sentences.find(s => String(s.id) === String(state.editingId));
+  if (!sentence) { closeEditOverlay(); return; }
+
+  toggleHidden(sentence);
+  closeEditOverlay();
+  renderVocabTab();
 }
 
 function closeEditOverlay() {
@@ -182,6 +216,8 @@ function handleEditDelete() {
   saveSentences();
   delete state.logs[String(id)];
   saveLogs();
+  state.hiddenIds = state.hiddenIds.filter(x => x !== String(id));
+  saveHiddenIds();
 
   // 휴지통에는 항상 로컬로만 보관 (시트 동기화 성공/실패와 무관) - 복구할 때만 시트에 다시 추가함
   state.trash.unshift({
@@ -233,9 +269,15 @@ function queuePendingDelete(id) {
 
 document.getElementById('edit-close-btn').addEventListener('click', closeEditOverlay);
 document.getElementById('edit-save-btn').addEventListener('click', handleEditSave);
+document.getElementById('edit-hide-btn').addEventListener('click', handleEditToggleHidden);
 document.getElementById('edit-delete-btn').addEventListener('click', handleEditDelete);
 document.getElementById('edit-overlay').addEventListener('click', (e) => {
   if (e.target.id === 'edit-overlay') closeEditOverlay();
+});
+
+document.getElementById('vocab-hidden-toggle-btn').addEventListener('click', () => {
+  state.vocabShowHidden = !state.vocabShowHidden;
+  renderVocabTab();
 });
 
 document.getElementById('vocab-start-btn').addEventListener('click', () => {
@@ -365,8 +407,11 @@ function handleDeleteDeck(deckName) {
     delete state.logs[String(s.id)];
   });
   state.sentences = state.sentences.filter(s => deckOf(s) !== deckName);
+  const deletedIds = sentencesInDeck.map(s => String(s.id));
+  state.hiddenIds = state.hiddenIds.filter(x => !deletedIds.includes(x));
   saveSentences();
   saveLogs();
+  saveHiddenIds();
   saveTrash();
   updateTrashBadge();
 

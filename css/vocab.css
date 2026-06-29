@@ -50,6 +50,21 @@
 .vocab-status.correct { background: rgba(151,196,89,0.15); color: var(--correct); }
 .vocab-status.wrong { background: rgba(226,75,74,0.15); color: var(--incorrect); }
 
+.vocab-item.hidden-item { opacity: 0.55; }
+.vocab-hide-btn {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 100px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.vocab-hide-btn:active { transform: scale(0.96); }
+#vocab-hidden-toggle-btn.active { background: var(--accent); color: #1B1F00; border-color: var(--accent); }
+
 .vocab-hint-toggle {
   font-size: 12px;
   color: var(--accent);

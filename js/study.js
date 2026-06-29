@@ -6,6 +6,7 @@
 function buildQueue() {
   let ids = state.sentences
     .filter(s => state.studyDeck === 'all' || deckOf(s) === state.studyDeck)
+    .filter(s => !isHidden(s))
     .map(s => String(s.id));
 
   if (state.filter === 'wrong') {
