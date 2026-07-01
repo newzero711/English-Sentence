@@ -72,10 +72,33 @@ Netlify, Vercel, Cloudflare Pages 등에 폴더를 드래그&드롭하면 즉시
 
 ```
 sentence-app/
-├── index.html          # 앱 본체 (UI + 로직)
-├── manifest.json        # PWA 설정 (홈화면 아이콘/이름)
-├── sw.js                 # 서비스 워커 (오프라인 캐시)
-├── icon-192.png          # 앱 아이콘
-├── icon-512.png          # 앱 아이콘 (고해상도)
-└── AppsScript_Code.gs    # Google Sheets 연동 스크립트
+├── serve.sh                      # 로컬 미리보기 서버 (docs/ 에서 서빙)
+├── agents/                       # 기획·가이드 문서
+│   ├── planning.md
+│   └── README.md
+├── backend/
+│   └── AppsScript_Code.gs        # Google Sheets 연동 스크립트
+├── docs/                         # GitHub Pages 서빙 루트 (/docs)
+│   ├── index.html                # 앱 진입점 (HTML)
+│   ├── sw.js                     # 서비스 워커 (오프라인 캐시)
+│   ├── sources/
+│   │   ├── manifest.json         # PWA 설정
+│   │   ├── icon-192.png
+│   │   └── icon-512.png
+│   ├── css/                      # 화면별 스타일시트
+│   └── js/
+│       ├── state.js              # 공용 상태·저장소·유틸
+│       ├── shell.js              # 탭 네비게이션
+│       ├── init.js               # 앱 초기화
+│       ├── screens/              # 탭 화면별 로직
+│       │   ├── vocab.js
+│       │   ├── study.js
+│       │   ├── add.js
+│       │   ├── calendar.js
+│       │   └── settings.js
+│       └── modals/               # 팝업 모달별 로직
+│           ├── edit.js
+│           ├── deck-add.js
+│           ├── deck-order.js
+│           └── trash.js
 ```

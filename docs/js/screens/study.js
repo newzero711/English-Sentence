@@ -60,7 +60,13 @@ function closeStudyOverlay() {
   renderVocabTab();
 }
 
+function endStudyEarly() {
+  state.sessionDone = true;
+  render();
+}
+
 document.getElementById('study-close-btn').addEventListener('click', closeStudyOverlay);
+document.getElementById('study-end-btn').addEventListener('click', endStudyEarly);
 
 function render() {
   const total = state.queue.length;
@@ -73,6 +79,9 @@ function render() {
 
   document.getElementById('filter-summary').textContent =
     `${state.studyDeck === 'all' ? '전체' : state.studyDeck} · ${FILTER_LABELS[state.filter]}`;
+
+  document.getElementById('study-end-btn').style.display =
+    (!state.sessionDone && total > 0) ? '' : 'none';
 
   if (state.sessionDone) {
     promptCard.style.display = 'none';

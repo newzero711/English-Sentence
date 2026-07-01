@@ -1,22 +1,25 @@
-const CACHE_NAME = 'sentence-app-v9';
+const CACHE_NAME = 'sentence-app-v11';
 const ASSETS = [
   './',
   './index.html',
   './sources/manifest.json',
-  './frontend/css/base.css',
-  './frontend/css/vocab.css',
-  './frontend/css/study.css',
-  './frontend/css/calendar.css',
-  './frontend/css/trash.css',
-  './frontend/js/state.js',
-  './frontend/js/shell.js',
-  './frontend/js/vocab.js',
-  './frontend/js/study.js',
-  './frontend/js/add.js',
-  './frontend/js/trash.js',
-  './frontend/js/calendar.js',
-  './frontend/js/settings.js',
-  './frontend/js/init.js'
+  './css/base.css',
+  './css/vocab.css',
+  './css/study.css',
+  './css/calendar.css',
+  './css/trash.css',
+  './js/state.js',
+  './js/shell.js',
+  './js/screens/vocab.js',
+  './js/screens/study.js',
+  './js/screens/add.js',
+  './js/screens/calendar.js',
+  './js/screens/settings.js',
+  './js/modals/edit.js',
+  './js/modals/deck-add.js',
+  './js/modals/deck-order.js',
+  './js/modals/trash.js',
+  './js/init.js'
 ];
 
 self.addEventListener('install', (event) => {

@@ -10,11 +10,11 @@
 <title>영어 문장 암기</title>
 <link rel="manifest" href="sources/manifest.json" />
 <link rel="apple-touch-icon" href="sources/icon-192.png" />
-<link rel="stylesheet" href="frontend/css/base.css" />
-<link rel="stylesheet" href="frontend/css/vocab.css" />
-<link rel="stylesheet" href="frontend/css/study.css" />
-<link rel="stylesheet" href="frontend/css/calendar.css" />
-<link rel="stylesheet" href="frontend/css/trash.css" />
+<link rel="stylesheet" href="css/base.css" />
+<link rel="stylesheet" href="css/vocab.css" />
+<link rel="stylesheet" href="css/study.css" />
+<link rel="stylesheet" href="css/calendar.css" />
+<link rel="stylesheet" href="css/trash.css" />
 </head>
 <body>
 
@@ -150,7 +150,7 @@
       <span class="pill" id="day-pill">DAY 1</span>
       <span id="filter-summary">전체 문장</span>
     </div>
-    <div style="width:36px;"></div>
+    <button id="study-end-btn" style="display:none; background:var(--surface); border:1px solid var(--border); color:var(--text-dim); border-radius:10px; font-size:12px; font-weight:700; padding:6px 12px; cursor:pointer; font-family:inherit;">종료</button>
   </div>
 
   <div class="progress-track">
@@ -193,6 +193,7 @@
       <div class="session-score" id="session-score">0 / 0</div>
       <p id="session-score-sub"></p>
     </div>
+
 
   </div>
 
@@ -302,15 +303,18 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="frontend/js/state.js"></script>
-<script src="frontend/js/shell.js"></script>
-<script src="frontend/js/vocab.js"></script>
-<script src="frontend/js/study.js"></script>
-<script src="frontend/js/add.js"></script>
-<script src="frontend/js/trash.js"></script>
-<script src="frontend/js/calendar.js"></script>
-<script src="frontend/js/settings.js"></script>
-<script src="frontend/js/init.js"></script>
+<script src="js/state.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/screens/vocab.js"></script>
+<script src="js/screens/study.js"></script>
+<script src="js/screens/add.js"></script>
+<script src="js/screens/calendar.js"></script>
+<script src="js/screens/settings.js"></script>
+<script src="js/modals/edit.js"></script>
+<script src="js/modals/deck-add.js"></script>
+<script src="js/modals/deck-order.js"></script>
+<script src="js/modals/trash.js"></script>
+<script src="js/init.js"></script>
 
 </body>
 </html>
